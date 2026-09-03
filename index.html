@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0b1220" />
+    <title>Odoo Architect Studio</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <a class="brand" href="#top" aria-label="Odoo Architect Studio home">
+          <span class="brand-mark">OA</span>
+          <span>Odoo Architect <strong>Studio</strong></span>
+        </a>
+        <div class="topbar-actions">
+          <span class="connection-pill" id="webmcp-status" aria-live="polite">Checking WebMCP…</span>
+          <label class="version-label">Odoo <select id="odoo-version"><option value="18.0" selected>18.0</option><option value="19.0">19.0</option></select></label>
+          <button class="button button-ghost" id="reset-button" type="button">Reset demo</button>
+        </div>
+      </header>
+
+      <section class="hero" id="top">
+        <div>
+          <p class="eyebrow">Agent proposes · Human disposes · Nothing generates without approval</p>
+          <h1>Business apps your agent <em>can't break.</em></h1>
+          <p class="hero-copy">
+            Before: agents guessed ERP XML and broke upgrades. Now: your agent plans in the open,
+            explains tradeoffs, gets blocked without your approval, then generates audited Odoo files.
+            Same governance pattern works for Shopify, POS, any business app.
+          </p>
+          <div class="hero-badges"><span>10 WebMCP tools</span><span>4 live scenarios</span><span>7/7 validation</span></div>
+        </div>
+        <div class="hero-orbit" aria-hidden="true">
+          <span class="orbit-core">Human<br />+ Agent</span>
+          <span class="orbit-label label-one">Plan</span>
+          <span class="orbit-label label-two">Review</span>
+          <span class="orbit-label label-three">Generate</span>
+        </div>
+      </section>
+
+      <section class="workflow-progress" aria-label="Architecture workflow">
+        <div class="progress-step active"><span>1</span> Brief</div>
+        <div class="progress-line"></div>
+        <div class="progress-step" id="step-plan"><span>2</span> Plan</div>
+        <div class="progress-line"></div>
+        <div class="progress-step" id="step-approve"><span>3</span> Approve</div>
+        <div class="progress-line"></div>
+        <div class="progress-step" id="step-generate"><span>4</span> Generate</div>
+      </section>
+
+      <section class="workspace-grid">
+        <article class="panel brief-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="section-kicker">01 / Business brief</p>
+              <h2>What should change?</h2>
+            </div>
+            <span class="human-tag">Human input</span>
+          </div>
+          <label for="requirement">Describe the outcome, not the implementation.</label>
+          <textarea id="requirement" rows="7">When a sales order becomes urgent, show a delivery urgency on the quotation, copy it to the invoice, and make it visible to warehouse staff.</textarea>
+          <div class="brief-footer">
+            <span id="brief-hint">The agent will turn this into a reviewable plan.</span>
+            <button class="button button-primary" id="draft-button" type="button">Draft architecture plan <span>→</span></button>
+          </div>
+          <div class="preset-row">
+            <span>Try:</span>
+            <button type="button" data-preset="urgency">Delivery urgency</button>
+            <button type="button" data-preset="pharmacy">Pharmacy expiry</button>
+            <button type="button" data-preset="pos_discount">POS discount</button>
+            <button type="button" data-preset="shopify">Shopify bridge</button>
+          </div>
+        </article>
+
+        <aside class="panel agent-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="section-kicker">Agent workspace</p>
+              <h2>Guardrails in use</h2>
+            </div>
+            <span class="agent-tag">Structured tools</span>
+          </div>
+          <ul class="guardrail-list" id="guardrail-list"></ul>
+          <div class="agent-note">
+            <span class="note-icon">✦</span>
+            <p>Plans favor custom add-ons, ORM-first models, stable XML inheritance, access rights, and testable behavior.</p>
+          </div>
+        </aside>
+      </section>
+
+      <section class="plan-section" aria-labelledby="plan-heading">
+        <div class="section-title-row">
+          <div>
+            <p class="section-kicker">02 / Shared architecture plan</p>
+            <h2 id="plan-heading">Review the proposal together</h2>
+          </div>
+          <span class="plan-status" id="plan-status">Waiting for a brief</span>
+        </div>
+        <div class="plan-grid" id="plan-grid" aria-live="polite"></div>
+      </section>
+
+      <section class="review-strip" id="review-strip">
+        <div>
+          <p class="section-kicker">03 / Human checkpoint</p>
+          <h2>Approve only the plan you understand.</h2>
+          <p>The agent is blocked from generating until you approve. Ask why, add guardrails, or send it back.</p>
+        </div>
+        <div class="review-actions">
+          <button class="button button-ghost" id="explain-button" type="button">Explain tradeoffs</button>
+          <button class="button button-ghost" id="reject-button" type="button">Request changes</button>
+          <button class="button button-ghost" id="add-rule-button" type="button">Add guardrail</button>
+          <button class="button button-primary" id="approve-button" type="button" disabled>Approve plan <span>✓</span></button>
+        </div>
+        <div class="tradeoff-box" id="tradeoff-box" hidden></div>
+      </section>
+
+      <section class="output-section" id="output-section" hidden>
+        <div class="output-heading">
+          <div>
+            <p class="section-kicker">04 / Generated starter</p>
+            <h2>Your Odoo add-on blueprint is ready.</h2>
+          </div>
+          <span class="success-pill">Validated</span>
+        </div>
+        <div class="output-grid">
+          <article class="generated-card">
+            <p class="file-label">ADD-ON STRUCTURE</p>
+            <pre id="addon-tree"></pre>
+          </article>
+          <article class="generated-card">
+            <p class="file-label">VALIDATION REPORT</p>
+            <ul class="validation-list" id="validation-list"></ul>
+          </article>
+        </div>
+        <div class="output-footer">
+          <p id="generation-summary"></p>
+          <div class="output-actions">
+            <button class="button button-ghost" id="copy-summary-button" type="button">Copy project summary</button>
+            <button class="button button-primary" id="download-button" type="button">Download bundle</button>
+          </div>
+        </div>
+        <div class="file-explorer">
+          <p class="file-label">GENERATED FILES — CLICK TO INSPECT (AGENT CAN READ VIA get_file_content)</p>
+          <div class="file-tabs" id="file-tabs"></div>
+          <pre class="file-viewer" id="file-viewer">Generate to inspect files.</pre>
+          <div class="file-actions"><button class="button button-ghost" id="copy-file-button" type="button">Copy file</button></div>
+        </div>
+      </section>
+
+      <section class="activity-section">
+        <p class="section-kicker">Human + agent timeline</p>
+        <h2>Every action is observable.</h2>
+        <ul class="activity-list" id="activity-list"><li>Human + agent actions will appear here.</li></ul>
+      </section>
+
+      <section class="tool-section">
+        <p class="section-kicker">Deploy + validate like a winner</p>
+        <h2>Static now, sponsor-ready.</h2>
+        <p class="tool-copy">Dependency-free static — deploy to any sponsor in minutes, then validate against the upstream LGPL framework:</p>
+        <div class="deploy-row"><span>Vercel / Netlify / Cloudflare Pages / ChatGPT Sites</span><code>python tools/validate_framework.py</code></div>
+        <p class="section-kicker">WebMCP tool surface</p>
+        <h2>Built for agents, observable by people.</h2>
+        <p class="tool-copy">Copy this prompt into a WebMCP browser to run the golden path in 60 seconds:</p>
+        <div class="prompt-box"><code id="agent-prompt">Draft a plan for pharmacy expiry, explain tradeoffs, wait for my approval, then generate and validate. Show me the model file.</code><button class="button button-ghost" id="copy-prompt-button" type="button">Copy prompt</button></div>
+        <div class="tool-list" id="tool-list"></div>
+      </section>
+    </main>
+
+    <template id="plan-card-template">
+      <article class="plan-card">
+        <span class="card-number"></span>
+        <h3></h3>
+        <p></p>
+        <ul></ul>
+      </article>
+    </template>
+
+    <script src="app.js"></script>
+  </body>
+</html>
