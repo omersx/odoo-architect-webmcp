@@ -56,7 +56,7 @@ After reviewing the visible plan, confirm approval and ask the agent to call `ap
 
 ## Challenge materials
 
-- Live-app URL: add after deployment
+- Live-app URL: https://odoo-architect-webmcp.vercel.app
 - Demo video URL: add before Devpost submission
 - Upstream framework: [Odoo Architect Agent Framework](https://github.com/omersx/odoo-architect-agent-framework)
 
