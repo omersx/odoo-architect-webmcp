@@ -52,6 +52,14 @@ function provider() {
   return { baseURL: baseURL.replace(/\/+$/, ""), apiKey, model };
 }
 
+function errKind(e) {
+  if (!e) return "unknown";
+  if (e.name === "AbortError") return "timeout";
+  if (e.message === "bad-shape" || e.message === "upstream-empty") return e.message;
+  if (typeof e.status === "number") return `upstream-${e.status}`;
+  return "error";
+}
+
 function extractJson(text) {
   try {
     return JSON.parse(text);
@@ -115,4 +123,4 @@ async function chatJson(baseURL, apiKey, model, system, user, maxTokens, timeout
   }
 }
 
-module.exports = { clientIp, rateLimited, readJsonBody, provider, chatJson };
+module.exports = { clientIp, rateLimited, readJsonBody, provider, chatJson, errKind };

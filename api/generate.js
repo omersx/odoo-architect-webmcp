@@ -1,6 +1,6 @@
 // POST /api/generate { module, primary, fields[], brief, guardrails[], allowedPaths[] }
 // -> { files: {path: content} } filtered to allowlist. Key server-side only.
-const { clientIp, rateLimited, readJsonBody, provider, chatJson } = require("./_guard");
+const { clientIp, rateLimited, readJsonBody, provider, chatJson, errKind } = require("./_guard");
 
 const SYSTEM = [
   "You are Odoo Architect, a senior Odoo engineer.",
@@ -58,11 +58,12 @@ module.exports = async (req, res) => {
     `Write exactly these paths: ${allowedPaths.join(", ")}`
   ].join("\n");
   try {
-    const out = await chatJson(prov.baseURL, prov.apiKey, prov.model, SYSTEM, user, 3000, 20000);
+    const out = await chatJson(prov.baseURL, prov.apiKey, prov.model, SYSTEM, user, 3000, 45000);
     const files = cleanFiles(out.files, allowedPaths);
     if (!Object.keys(files).length) throw new Error("bad-shape");
     res.status(200).json({ files });
   } catch (e) {
+    console.log(JSON.stringify({ ep: "generate", kind: errKind(e) }));
     res.status(502).json({ error: "ai-unavailable" });
   }
 };

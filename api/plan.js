@@ -1,7 +1,7 @@
 // POST /api/plan { requirement, guardrails[], targets[] }
 // -> { sections: [{title, description, items[]}] } or generic {error}.
 // Key + provider URL stay server-side. Rate-limited, size-capped, no leaks.
-const { clientIp, rateLimited, readJsonBody, provider, chatJson } = require("./_guard");
+const { clientIp, rateLimited, readJsonBody, provider, chatJson, errKind } = require("./_guard");
 
 const SYSTEM = [
   "You are Odoo Architect, a senior Odoo engineer.",
@@ -59,6 +59,7 @@ module.exports = async (req, res) => {
     if (clean.some((s) => !s.items.length)) throw new Error("bad-shape");
     res.status(200).json({ sections: clean });
   } catch (e) {
+    console.log(JSON.stringify({ ep: "plan", kind: errKind(e) }));
     res.status(502).json({ error: "ai-unavailable" });
   }
 };
