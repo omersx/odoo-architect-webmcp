@@ -742,9 +742,9 @@ function generateAddon() {
 
 function aiStatusText() {
   if (!state.ai) return "Local composer";
-  if (state.aiAvailable === true) return "AI model via secure backend";
+  if (state.aiAvailable === true) return "AI on";
   if (state.aiAvailable === false) return "AI unreachable — local fallback";
-  return "Checking AI backend…";
+  return "Checking…";
 }
 
 function renderAi() {
