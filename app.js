@@ -222,9 +222,13 @@ ${depsPy}
     "installable": True,
 }
 `;
+  const modelPath = `models/${meta.modelFile}`;
+  const modelImport = meta.modelFile.replace(/\.py$/, "");
+  const testStem = `test_${meta.moduleSuffix}`;
+  const testPath = `tests/${testStem}.py`;
   const initPy = `from . import models
 `;
-  const modelsInit = `from . import sale_order
+  const modelsInit = `from . import ${modelImport}
 `;
   const saleOrderPy = scenario === "shopify" ? `from odoo import api, fields, models
 
@@ -405,26 +409,27 @@ Copy to Odoo addons path and update app list, then install.
     "__manifest__.py": manifest,
     "__init__.py": initPy,
     "models/__init__.py": modelsInit,
-    "models/sale_order.py": saleOrderPy,
+    [modelPath]: saleOrderPy,
     "views/sale_order_views.xml": saleXml,
     "views/account_move_views.xml": invoiceXml,
     "views/stock_picking_views.xml": pickingXml,
     "security/ir.model.access.csv": accessCsv,
-    "tests/__init__.py": "from . import test_delivery_urgency\n",
-    "tests/test_delivery_urgency.py": testPy,
+    "tests/__init__.py": `from . import ${testStem}\n`,
+    [testPath]: testPy,
     "README.md": readme
   };
 }
 
 function generatedTree() {
   const module = state.module || currentModuleName();
+  const meta = scenarioMeta(state.scenario || "generic");
   return `${module}/
 ├── __init__.py
 ├── __manifest__.py
 ├── README.md
 ├── models/
 │   ├── __init__.py
-│   └── sale_order.py
+│   └── ${meta.modelFile}
 ├── views/
 │   ├── sale_order_views.xml
 │   ├── account_move_views.xml
@@ -433,7 +438,7 @@ function generatedTree() {
 │   └── ir.model.access.csv
 └── tests/
     ├── __init__.py
-    └── test_delivery_urgency.py`;
+    └── test_${meta.moduleSuffix}.py`;
 }
 
 function runRealValidation() {
@@ -447,7 +452,8 @@ function runRealValidation() {
   const deps = inferDependencies(state.requirement);
   const depsOk = deps.every((d) => manifest.includes(`"${d}"`));
   push("manifest-depends", depsOk, `expects ${deps.join(",")}`);
-  const py = files["models/sale_order.py"] || "";
+  const pyKey = Object.keys(files).find((k) => k.startsWith("models/") && k !== "models/__init__.py") || "models/sale_order.py";
+  const py = files[pyKey] || "";
   push("orm-inherit", py.includes('_inherit = "') && !py.includes("SELECT ") && !py.includes("select "), `uses _inherit in ${state.scenario} model, no raw SQL`);
   let xmlOk = true;
   let xmlDetail = "3 views parse";
@@ -462,7 +468,8 @@ function runRealValidation() {
   push("xml-inheritance", xmlOk, xmlDetail);
   const csv = files["security/ir.model.access.csv"] || "";
   push("access-rights", csv.includes("access_") && csv.includes("perm_read"), "ir.model.access.csv present");
-  const test = files["tests/test_delivery_urgency.py"] || "";
+  const testKey = Object.keys(files).find((k) => k.startsWith("tests/test_")) || "tests/test_delivery_urgency.py";
+  const test = files[testKey] || "";
   const testOk = test.includes("def test_") && (test.includes("_prepare_invoice") || test.includes("_check_") || test.includes("action_confirm") || test.includes("_upsert") || test.includes("shopify"));
   push("tests", testOk, `${state.scenario} TransactionCase tests present`);
   push("guardrails", (files["README.md"] || "").includes("Guardrails"), `${state.guardrails.length} guardrails attached`);
