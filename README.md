@@ -30,7 +30,7 @@ The page uses the current imperative WebMCP API on `document.modelContext`:
 - `get_file_content` (read-only)
 - `export_addon_bundle` (read-only)
 
-All state-changing tools update the visible workspace + human+agent timeline. The app composes 11 Odoo files from your brief — module, targets, fields, views, and tests derived from the requirement text (presets included) — with file tabs, validation score, and one-click bundle download. State persists via localStorage + shareable #brief link. Try presets: Delivery urgency / Pharmacy expiry / POS discount / Shopify bridge.
+All state-changing tools update the visible workspace + human+agent timeline. The app composes 11 Odoo files from your brief — module, targets, fields, views, and tests derived from the requirement text (presets included) — with file tabs, validation score, and one-click bundle download. Every visit starts fresh — refresh clears the workspace. Try presets: Delivery urgency / Pharmacy expiry / POS discount / Shopify bridge.
 
 ## AI model backend (optional, secure)
 

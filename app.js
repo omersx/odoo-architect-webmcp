@@ -152,28 +152,15 @@ function logActivity(actor, action) {
 }
 
 function persist() {
+  // Fresh-start policy: refresh always begins a new session.
+  // Nothing is stored, so no previous output can reappear on load.
   try {
-    localStorage.setItem("oa-studio", JSON.stringify({
-      requirement: state.requirement, plan: state.plan, guardrails: state.guardrails,
-      approved: state.approved, generated: state.generated, validation: state.validation,
-      files: state.files, module: state.module, scenario: state.scenario,
-      odooVersion: state.odooVersion, activity: state.activity.slice(-20),
-      ai: state.ai
-    }));
+    localStorage.removeItem("oa-studio");
   } catch (e) { /* private mode */ }
 }
 
 function restore() {
-  try {
-    const raw = localStorage.getItem("oa-studio");
-    if (!raw) return;
-    const s = JSON.parse(raw);
-    Object.assign(state, s);
-    if ((s.generated && Object.keys(s.files || {}).length) || (s.plan && s.plan.length)) {
-      state.restored = true;
-    }
-    if (state.requirement && elements.requirement) elements.requirement.value = state.requirement;
-  } catch (e) { /* ignore */ }
+  // Disabled by fresh-start policy: every load begins empty.
 }
 
 function inferDependencies(requirement) {
@@ -654,14 +641,9 @@ function renderOutput() {
   if (!elements.output) return;
   elements.output.hidden = !state.generated;
   if (!state.generated) return;
-  if (state.restored) {
-    state.restored = false;
-    state.restoredNote = true;
-  }
   if (elements.addonTree) elements.addonTree.textContent = generatedTree();
   if (elements.validationList) elements.validationList.innerHTML = state.validation.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
-  if (elements.generationSummary) elements.generationSummary.textContent = `${state.restoredNote ? "Showing your last session — Reset demo for a fresh run. " : ""}Generated ${state.module} — ${Object.keys(state.files).length} files from the approved brief: “${summarizeRequirement(state.requirement)}”`;
-  state.restoredNote = false;
+  if (elements.generationSummary) elements.generationSummary.textContent = `Generated ${state.module} — ${Object.keys(state.files).length} files from the approved brief: “${summarizeRequirement(state.requirement)}”`;
   setWorkflowStep("step-generate", true);
   renderFileTabs();
 }
@@ -725,11 +707,6 @@ function draftPlan(requirement = elements.requirement.value) {
   logActivity("agent", `Drafted ${state.scenario} plan for ${state.module}`);
   render();
   persist();
-  try {
-    const url = new URL(window.location.href);
-    url.hash = `brief=${encodeURIComponent(state.requirement.slice(0, 200))}`;
-    history.replaceState(null, "", url.toString());
-  } catch (e) {}
   return snapshot();
 }
 
@@ -1111,12 +1088,6 @@ document.querySelector("#ai-toggle")?.addEventListener("change", async (e) => {
 
 restore();
 if (typeof state.ai !== "boolean") state.ai = false;
-if (!state.requirement) {
-  try {
-    const h = window.location.hash;
-    if (h.startsWith("#brief=") && elements.requirement) elements.requirement.value = decodeURIComponent(h.slice(7)).slice(0, 500);
-  } catch (e) {}
-}
 render();
 registerWebMcpTools();
 probeAI();
