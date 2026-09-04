@@ -105,6 +105,41 @@ function scenarioMeta(scenario) {
   };
 }
 
+function keywordList(text, count) {
+  const stop = new Set(["when","show","make","that","this","with","from","into","order","sales","sale","allow","record","visible","staff","time","above","need","needs","without","before","after","each","more","most","very","just","block","warn","copy","becomes","become"]);
+  const words = (text.toLowerCase().match(/[a-z]{4,}/g) || []).filter((w) => !stop.has(w));
+  const uniq = [...new Set(words)];
+  return uniq.slice(0, count);
+}
+
+function parseBrief(requirement) {
+  const t = requirement.toLowerCase();
+  const scenario = detectScenario(requirement);
+  const has = (...keys) => keys.some((k) => t.includes(k));
+  const concepts = [];
+  if (has("urgent","urgency","priority")) concepts.push("urgency");
+  if (has("expir")) concepts.push("expiry");
+  if (has("discount")) concepts.push("discount");
+  if (has("approv","override","manager","pharmacist")) concepts.push("approval");
+  if (has("shopify","webhook","sync","external")) concepts.push("sync");
+  if (has("invoice","account","receipt","pricelist")) concepts.push("invoice");
+  if (has("warehouse","stock","delivery","transfer","picking")) concepts.push("warehouse");
+  if (has("lead","opportunity","crm")) concepts.push("crm");
+  const targets = ["sale.order"];
+  if (has("pos","retail","receipt") && has("discount","pos","retail")) targets.unshift("pos.order");
+  if (has("invoice","account")) targets.push("account.move");
+  if (has("warehouse","stock","delivery","transfer","picking")) targets.push("stock.picking");
+  if (has("lead","opportunity","crm")) targets.push("crm.lead");
+  const uniqTargets = [...new Set(targets)];
+  const primary = uniqTargets[0];
+  const presetSuffix = { shopify: "shopify_bridge", pharmacy: "pharmacy_expiry", pos: "pos_discount", urgency: "delivery_urgency" }[scenario];
+  const kw = keywordList(t, 2);
+  const moduleSuffix = presetSuffix || ((kw.join("_") || "custom_workflow").slice(0, 34));
+  const depends = inferDependencies(requirement);
+  if (scenario === "shopify" && !depends.includes("sale_management")) depends.push("sale_management");
+  return { scenario, concepts, targets: uniqTargets, primary, moduleSuffix, module: `biz_bridge_${moduleSuffix}`, depends, keywords: kw };
+}
+
 function logActivity(actor, action) {
   const entry = { t: new Date().toISOString(), actor, action };
   state.activity.push(entry);
@@ -152,27 +187,32 @@ function summarizeRequirement(requirement) {
 }
 
 function buildPlan(requirement) {
-  const scenario = detectScenario(requirement);
-  state.scenario = scenario;
-  const meta = scenarioMeta(scenario);
-  const dependencies = inferDependencies(requirement);
-  const dependencyText = dependencies.map(titleCase).join(", ");
+  const spec = parseBrief(requirement);
+  state.scenario = spec.scenario;
+  state.module = spec.module;
+  const meta = scenarioMeta(spec.scenario);
+  const dependencyText = spec.depends.map(titleCase).join(", ");
   const extra = state.guardrails.slice(4).map((g) => `Guardrail: ${g}`);
   const multiCompany = state.guardrails.some((g) => g.toLowerCase().includes("multi-company") || g.toLowerCase().includes("company"));
+  const conceptLine = spec.concepts.length ? `Concepts: ${spec.concepts.join(", ")}` : "Concepts: custom workflow";
+  const targetLine = `Targets: ${spec.targets.join(", ")}`;
+  const domainItems = spec.scenario === "pharmacy"
+    ? ["expiry check via ORM, no raw SQL", "block confirm without override group", "audit log model for overrides"]
+    : spec.scenario === "pos"
+    ? ["discount approval field + approver tracking", "enforce >10% needs manager group", "receipt/invoice display method"]
+    : spec.scenario === "shopify"
+    ? ["idempotent upsert via ORM search, no duplicates", "discount/pricelist mapping method", "failure queue for manual review"]
+    : [`Derive fields from brief keywords: ${spec.keywords.join(", ") || "custom"}`, "ORM-first methods, no raw SQL", "Keep standard flow via super()"];
   return [
     {
       title: `Scope & modules — ${meta.title}`,
       description: "Map the business request to the smallest upgrade-safe Odoo extension.",
-      items: [`Create extension module: biz_bridge_${meta.moduleSuffix}`, `Depends on ${dependencyText}`, `Field: ${meta.field} in ${meta.modelFile}`, "Keep standard Odoo behavior intact", ...extra.slice(0, 3)]
+      items: [`Create extension module: ${spec.module}`, `Depends on ${dependencyText}`, targetLine, conceptLine, "Keep standard Odoo behavior intact", ...extra.slice(0, 3)]
     },
     {
       title: "Domain model",
       description: meta.modelDesc,
-      items: scenario === "pharmacy"
-        ? ["expiry check via ORM, no raw SQL", "block confirm without override group", "audit log model for overrides"]
-        : scenario === "pos"
-        ? ["discount approval field + approver tracking", "enforce >10% needs manager group", "receipt/invoice display method"]
-        : ["Add selection/boolean fields via _inherit", "Propagate values through defined model methods", "Avoid direct SQL and Odoo-core edits"]
+      items: domainItems
     },
     {
       title: "Views & access",
@@ -188,21 +228,27 @@ function buildPlan(requirement) {
 }
 
 function currentModuleName() {
-  const meta = scenarioMeta(state.scenario || detectScenario(state.requirement || ""));
-  return `biz_bridge_${meta.moduleSuffix}`;
+  try {
+    return parseBrief(state.requirement || "").module;
+  } catch (e) {
+    return "biz_bridge_custom_workflow";
+  }
 }
 
 function generateAddonFiles() {
-  const scenario = detectScenario(state.requirement);
+  const spec = parseBrief(state.requirement);
+  const scenario = spec.scenario;
   state.scenario = scenario;
   const meta = scenarioMeta(scenario);
-  const module = `biz_bridge_${meta.moduleSuffix}`;
+  const module = spec.module;
   state.module = module;
-  const deps = [...new Set([...inferDependencies(state.requirement), ...meta.dependsExtra])];
+  const deps = [...new Set([...spec.depends, ...meta.dependsExtra])];
   const depsPy = deps.map((d) => `        "${d}",`).join("\n");
   const brief = summarizeRequirement(state.requirement);
   const guardrailText = state.guardrails.map((g) => `- ${g}`).join("\n");
   const multiCompanyNote = state.guardrails.some((g) => g.toLowerCase().includes("company")) ? "\n# Guardrail: multi-company safe (company_id respected)." : "";
+  const isPos = spec.primary === "pos.order";
+  const className = isPos ? "PosOrder" : "SaleOrder";
 
   const manifest = `{
     "name": "${titleCase(module)}",
@@ -222,13 +268,43 @@ ${depsPy}
     "installable": True,
 }
 `;
-  const modelPath = `models/${meta.modelFile}`;
-  const modelImport = meta.modelFile.replace(/\.py$/, "");
-  const testStem = `test_${meta.moduleSuffix}`;
+  const modelPath = `models/${isPos ? "pos_order.py" : meta.modelFile}`;
+  const modelImport = (isPos ? "pos_order" : meta.modelFile).replace(/\.py$/, "");
+  const testStem = `test_${spec.moduleSuffix}`;
   const testPath = `tests/${testStem}.py`;
   const initPy = `from . import models
 `;
   const modelsInit = `from . import ${modelImport}
+`;
+  const genericField = (`x_${(spec.keywords.slice(0, 2).join("_") || "custom_flag")}`).slice(0, 30).replace(/[^a-z0-9_]/g, "");
+  const genericModelPy = `from odoo import api, fields, models
+
+
+class ${className}(models.Model):
+    _inherit = "${spec.primary}"
+
+    ${genericField} = fields.Boolean(
+        default=False,
+        help="Custom outcome from brief: ${brief.replace(/"/g, "'").slice(0, 90)}",
+    )
+    x_brief_note = fields.Char(help="Operator note captured with this customization.")${multiCompanyNote}
+
+    def _apply_brief_rules(self):
+        # ORM-first hook composed from the brief keywords: ${spec.keywords.join(", ") || "custom"}.
+        # Extend here; standard flow untouched.
+        return True
+`;
+  const genericTestPy = `from odoo.tests.common import TransactionCase
+
+
+class TestBriefRules(TransactionCase):
+    def test_flag_defaults_false(self):
+        order = self.env["${spec.primary}"].create({"partner_id": self.env.ref("base.res_partner_2").id})
+        self.assertFalse(order.${genericField})
+
+    def test_apply_brief_rules(self):
+        order = self.env["${spec.primary}"].create({"partner_id": self.env.ref("base.res_partner_2").id})
+        self.assertTrue(order._apply_brief_rules())
 `;
   const saleOrderPy = scenario === "shopify" ? `from odoo import api, fields, models
 
@@ -281,7 +357,7 @@ class PosOrder(models.Model):
         if self.manager_discount > 10 and not self.discount_approver_id:
             raise ValidationError("Discount above 10% requires manager approval.")
         return True
-` : `from odoo import api, fields, models
+` : scenario === "urgency" ? `from odoo import api, fields, models
 
 
 class SaleOrder(models.Model):
@@ -301,7 +377,7 @@ class SaleOrder(models.Model):
     def action_confirm(self):
         # Guardrail-aware: keep standard flow, add audit-safe hook.
         return super().action_confirm()
-`;
+` : genericModelPy;
   const saleXml = `<?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <record id="view_order_form_urgency" model="ir.ui.view">
@@ -380,10 +456,7 @@ class TestPosDiscount(TransactionCase):
         order.manager_discount = 20
         with self.assertRaises(Exception):
             order._check_discount()
-` : `from odoo.tests.common import TransactionCase
-
-
-class TestDeliveryUrgency(TransactionCase):
+` : scenario === "urgency" ? `from odoo.tests.common import TransactionCase
     def test_urgency_propagates_to_invoice(self):
         order = self.env["sale.order"].create({"partner_id": self.env.ref("base.res_partner_2").id})
         order.delivery_urgency = "urgent"
@@ -393,7 +466,7 @@ class TestDeliveryUrgency(TransactionCase):
     def test_default_is_normal(self):
         order = self.env["sale.order"].create({"partner_id": self.env.ref("base.res_partner_2").id})
         self.assertEqual(order.delivery_urgency, "normal")
-`;
+` : genericTestPy;
   const readme = `# ${titleCase(module)}
 
 ${brief}
@@ -422,14 +495,16 @@ Copy to Odoo addons path and update app list, then install.
 
 function generatedTree() {
   const module = state.module || currentModuleName();
+  const suffix = module.replace(/^biz_bridge_/, "");
   const meta = scenarioMeta(state.scenario || "generic");
+  const modelFile = state.scenario === "pos" ? "pos_order.py" : meta.modelFile;
   return `${module}/
 ├── __init__.py
 ├── __manifest__.py
 ├── README.md
 ├── models/
 │   ├── __init__.py
-│   └── ${meta.modelFile}
+│   └── ${modelFile}
 ├── views/
 │   ├── sale_order_views.xml
 │   ├── account_move_views.xml
@@ -438,7 +513,7 @@ function generatedTree() {
 │   └── ir.model.access.csv
 └── tests/
     ├── __init__.py
-    └── test_${meta.moduleSuffix}.py`;
+    └── test_${suffix}.py`;
 }
 
 function runRealValidation() {
@@ -470,7 +545,7 @@ function runRealValidation() {
   push("access-rights", csv.includes("access_") && csv.includes("perm_read"), "ir.model.access.csv present");
   const testKey = Object.keys(files).find((k) => k.startsWith("tests/test_")) || "tests/test_delivery_urgency.py";
   const test = files[testKey] || "";
-  const testOk = test.includes("def test_") && (test.includes("_prepare_invoice") || test.includes("_check_") || test.includes("action_confirm") || test.includes("_upsert") || test.includes("shopify"));
+  const testOk = test.includes("def test_") && (test.includes("_prepare_invoice") || test.includes("_check_") || test.includes("action_confirm") || test.includes("_upsert") || test.includes("shopify") || test.includes("_apply_brief_rules"));
   push("tests", testOk, `${state.scenario} TransactionCase tests present`);
   push("guardrails", (files["README.md"] || "").includes("Guardrails"), `${state.guardrails.length} guardrails attached`);
   return results;

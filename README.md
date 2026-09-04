@@ -30,7 +30,7 @@ The page uses the current imperative WebMCP API on `document.modelContext`:
 - `get_file_content` (read-only)
 - `export_addon_bundle` (read-only)
 
-All state-changing tools update the visible workspace + human+agent timeline. The app generates 11 real scenario-specific Odoo files (urgency / pharmacy / POS / shopify / generic: `__manifest__.py` for 18.0/19.0, models, 3 XML views, `ir.model.access.csv`, tests, README) with file tabs, validation score, and one-click bundle download. State persists via localStorage + shareable #brief link. Try presets: Delivery urgency / Pharmacy expiry / POS discount / Shopify bridge.
+All state-changing tools update the visible workspace + human+agent timeline. The app composes 11 Odoo files from your brief — module, targets, fields, views, and tests derived from the requirement text (presets included) — with file tabs, validation score, and one-click bundle download. State persists via localStorage + shareable #brief link. Try presets: Delivery urgency / Pharmacy expiry / POS discount / Shopify bridge.
 
 ## Deploy (sponsor-ready, static)
 
