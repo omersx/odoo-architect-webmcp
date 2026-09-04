@@ -169,6 +169,9 @@ function restore() {
     if (!raw) return;
     const s = JSON.parse(raw);
     Object.assign(state, s);
+    if ((s.generated && Object.keys(s.files || {}).length) || (s.plan && s.plan.length)) {
+      state.restored = true;
+    }
     if (state.requirement && elements.requirement) elements.requirement.value = state.requirement;
   } catch (e) { /* ignore */ }
 }
@@ -651,9 +654,14 @@ function renderOutput() {
   if (!elements.output) return;
   elements.output.hidden = !state.generated;
   if (!state.generated) return;
+  if (state.restored) {
+    state.restored = false;
+    state.restoredNote = true;
+  }
   if (elements.addonTree) elements.addonTree.textContent = generatedTree();
   if (elements.validationList) elements.validationList.innerHTML = state.validation.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
-  if (elements.generationSummary) elements.generationSummary.textContent = `Generated ${state.module} — ${Object.keys(state.files).length} files from the approved brief: “${summarizeRequirement(state.requirement)}”`;
+  if (elements.generationSummary) elements.generationSummary.textContent = `${state.restoredNote ? "Showing your last session — Reset demo for a fresh run. " : ""}Generated ${state.module} — ${Object.keys(state.files).length} files from the approved brief: “${summarizeRequirement(state.requirement)}”`;
+  state.restoredNote = false;
   setWorkflowStep("step-generate", true);
   renderFileTabs();
 }
@@ -712,6 +720,8 @@ function draftPlan(requirement = elements.requirement.value) {
   state.validation = [];
   state.files = {};
   activeFile = null;
+  state.restored = false;
+  state.restoredNote = false;
   logActivity("agent", `Drafted ${state.scenario} plan for ${state.module}`);
   render();
   persist();
@@ -1057,6 +1067,8 @@ document.querySelector("#reset-button")?.addEventListener("click", () => {
   state.activity = [];
   state.module = "biz_bridge_custom_workflow";
   state.scenario = "generic";
+  state.restored = false;
+  state.restoredNote = false;
   activeFile = null;
   try { localStorage.removeItem("oa-studio"); } catch (e) {}
   if (elements.requirement) elements.requirement.value = "";
