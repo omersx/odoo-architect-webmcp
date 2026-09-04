@@ -45,6 +45,7 @@ const elements = {
   planGrid: document.querySelector("#plan-grid"),
   planStatus: document.querySelector("#plan-status"),
   approveButton: document.querySelector("#approve-button"),
+  generateButton: document.querySelector("#generate-button"),
   output: document.querySelector("#output-section"),
   addonTree: document.querySelector("#addon-tree"),
   validationList: document.querySelector("#validation-list"),
@@ -635,6 +636,7 @@ function renderPlan() {
     elements.planStatus.classList.add("ready");
   }
   if (elements.approveButton) elements.approveButton.disabled = state.approved;
+  if (elements.generateButton) elements.generateButton.disabled = !(state.approved && state.plan.length);
   setWorkflowStep("step-plan", true);
   setWorkflowStep("step-approve", state.approved);
 }
@@ -881,7 +883,10 @@ document.querySelector("#draft-button")?.addEventListener("click", () => {
   try { draftPlan(); } catch (error) { alert(error.message); }
 });
 document.querySelector("#approve-button")?.addEventListener("click", () => {
-  try { approvePlan(); generateAddon(); } catch (error) { alert(error.message); }
+  try { approvePlan(); } catch (error) { alert(error.message); }
+});
+document.querySelector("#generate-button")?.addEventListener("click", () => {
+  try { generateAddon(); } catch (error) { alert(error.message); }
 });
 document.querySelector("#add-rule-button")?.addEventListener("click", () => {
   const rule = window.prompt("Add a guardrail for this project:");
