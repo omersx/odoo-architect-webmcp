@@ -89,6 +89,13 @@ h1 em { color: var(--violet); font-family: Georgia, serif; font-weight: 400; }
 .prompt-box { display: flex; gap: 10px; align-items: center; margin: 14px 0 6px; padding: 12px 14px; border: 1px dashed rgba(160,182,226,.3); border-radius: 12px; background: rgba(4,12,23,.5); }
 .prompt-box code { flex: 1; color: #c9d8f2; font-size: .75rem; }
 .tool-copy { color: var(--muted); font-size: .8rem; margin: 8px 0 0; }
+.more-actions { flex-basis: 100%; margin-top: 10px; }
+.more-actions summary { cursor: pointer; color: var(--muted); font-size: .76rem; font-weight: 700; }
+.more-buttons { display: flex; gap: 9px; flex-wrap: wrap; margin-top: 10px; }
+.section-summary { cursor: pointer; list-style: none; }
+.section-summary .section-title { display: block; font-size: 1.28rem; letter-spacing: -.03em; font-weight: 700; margin-top: 4px; }
+.tool-details { margin-top: 14px; }
+.tool-details summary { cursor: pointer; color: var(--cyan); font-size: .8rem; font-weight: 700; }
 .deploy-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin: 10px 0 18px; color: #c9d8f2; font-size: .76rem; }
 .deploy-row code { padding: 6px 10px; border-radius: 8px; background: #060c16; border: 1px solid var(--line); font-size: .72rem; }
 

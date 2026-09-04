@@ -108,11 +108,16 @@
           <p>The agent is blocked from generating until you approve. Ask why, add guardrails, or send it back.</p>
         </div>
         <div class="review-actions">
-          <button class="button button-ghost" id="explain-button" type="button">Explain tradeoffs</button>
-          <button class="button button-ghost" id="reject-button" type="button">Request changes</button>
-          <button class="button button-ghost" id="add-rule-button" type="button">Add guardrail</button>
           <button class="button button-ghost" id="approve-button" type="button" disabled title="Approve the reviewed plan">Approve plan <span>✓</span></button>
           <button class="button button-primary" id="generate-button" type="button" disabled title="Generate starter after approval">Generate starter <span>→</span></button>
+          <details class="more-actions">
+            <summary>More options</summary>
+            <div class="more-buttons">
+              <button class="button button-ghost" id="explain-button" type="button">Explain tradeoffs</button>
+              <button class="button button-ghost" id="reject-button" type="button">Request changes</button>
+              <button class="button button-ghost" id="add-rule-button" type="button">Add guardrail</button>
+            </div>
+          </details>
         </div>
         <div class="tradeoff-box" id="tradeoff-box" hidden></div>
       </section>
@@ -151,9 +156,10 @@
       </section>
 
       <section class="activity-section">
-        <p class="section-kicker">Human + agent timeline</p>
-        <h2>Every action is observable.</h2>
-        <ul class="activity-list" id="activity-list"><li>Human + agent actions will appear here.</li></ul>
+        <details open>
+          <summary class="section-summary"><span><span class="section-kicker">Human + agent timeline</span><span class="section-title">Every action is observable.</span></span></summary>
+          <ul class="activity-list" id="activity-list"><li>Human + agent actions will appear here.</li></ul>
+        </details>
       </section>
 
       <section class="tool-section">
@@ -161,7 +167,10 @@
         <h2>Built for agents, observable by people.</h2>
         <p class="tool-copy">Copy this prompt into a WebMCP browser to run the golden path in 60 seconds:</p>
         <div class="prompt-box"><code id="agent-prompt">Draft a plan for pharmacy expiry, explain tradeoffs, wait for my approval, then generate and validate. Show me the model file.</code><button class="button button-ghost" id="copy-prompt-button" type="button">Copy prompt</button></div>
-        <div class="tool-list" id="tool-list"></div>
+        <details class="tool-details">
+          <summary>10 agent tools — click to inspect</summary>
+          <div class="tool-list" id="tool-list"></div>
+        </details>
       </section>
     </main>
 
