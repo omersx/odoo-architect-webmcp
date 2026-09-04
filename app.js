@@ -1091,10 +1091,13 @@ document.querySelector("#download-button")?.addEventListener("click", () => {
     downloadBundle();
   } catch (e) { alert(e.message); }
 });
-document.querySelectorAll("[data-preset]")?.forEach((b) => b.addEventListener("click", async () => {
+document.querySelectorAll("[data-preset]")?.forEach((b) => b.addEventListener("click", () => {
   const key = b.dataset.preset;
-  if (elements.requirement && PRESETS[key]) elements.requirement.value = PRESETS[key];
-  try { await draftPlanEngine(PRESETS[key]); } catch (e) { alert(e.message); }
+  if (elements.requirement && PRESETS[key]) {
+    elements.requirement.value = PRESETS[key];
+    state.requirement = PRESETS[key];
+    elements.requirement.focus();
+  }
 }));
 
 document.querySelector("#ai-toggle")?.addEventListener("change", async (e) => {
