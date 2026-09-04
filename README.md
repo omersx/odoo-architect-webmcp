@@ -32,9 +32,21 @@ The page uses the current imperative WebMCP API on `document.modelContext`:
 
 All state-changing tools update the visible workspace + human+agent timeline. The app composes 11 Odoo files from your brief — module, targets, fields, views, and tests derived from the requirement text (presets included) — with file tabs, validation score, and one-click bundle download. State persists via localStorage + shareable #brief link. Try presets: Delivery urgency / Pharmacy expiry / POS discount / Shopify bridge.
 
-## Deploy (sponsor-ready, static)
+## AI model backend (optional, secure)
 
-Vercel, Netlify, Cloudflare Pages, or ChatGPT Sites — no build step. Then validate against upstream rules with `python tools/validate_framework.py` from [Odoo Architect Agent Framework](https://github.com/omersx/odoo-architect-agent-framework).
+Off by default the app composes starters locally. Toggle **Draft with AI model** to use your own
+OpenAI-compatible provider through secure Vercel functions. The browser never sees your key.
+
+```powershell
+vercel env add MODEL_BASE_URL      # e.g. https://api.openai.com/v1  (or OpenRouter, etc.)
+vercel env add MODEL_API_KEY       # server-only, never shipped to the browser
+vercel env add MODEL_NAME          # e.g. gpt-4o-mini
+vercel --prod
+```
+
+Security: key + provider URL live only in server env; `GET /api/status` reports only
+`{ai:true/false}`; plan/generate endpoints are POST-only, rate-limited, input-capped, and return
+generic errors. Set spend caps on your provider — the endpoints are public by design for judging.
 
 ## Run locally
 

@@ -36,7 +36,9 @@ const state = {
   module: "biz_bridge_custom_workflow",
   scenario: "generic",
   odooVersion: "18.0",
-  activity: []
+  activity: [],
+  ai: false,
+  aiAvailable: null
 };
 
 const elements = {
@@ -155,7 +157,8 @@ function persist() {
       requirement: state.requirement, plan: state.plan, guardrails: state.guardrails,
       approved: state.approved, generated: state.generated, validation: state.validation,
       files: state.files, module: state.module, scenario: state.scenario,
-      odooVersion: state.odooVersion, activity: state.activity.slice(-20)
+      odooVersion: state.odooVersion, activity: state.activity.slice(-20),
+      ai: state.ai
     }));
   } catch (e) { /* private mode */ }
 }
@@ -694,6 +697,7 @@ function render() {
   renderTools();
   renderActivity();
   renderFileTabs();
+  renderAi();
 }
 
 function draftPlan(requirement = elements.requirement.value) {
@@ -749,6 +753,125 @@ function generateAddon() {
   return { module: state.module, tree: generatedTree(), files: Object.keys(state.files), validation: state.validation };
 }
 
+function aiStatusText() {
+  if (!state.ai) return "Local composer";
+  if (state.aiAvailable === true) return "AI model via secure backend";
+  if (state.aiAvailable === false) return "AI unreachable — local fallback";
+  return "Checking AI backend…";
+}
+
+function renderAi() {
+  const t = document.querySelector("#ai-toggle");
+  if (t) t.checked = !!state.ai;
+  const s = document.querySelector("#ai-status");
+  if (s) s.textContent = aiStatusText();
+}
+
+async function probeAI() {
+  try {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), 8000);
+    const r = await fetch("/api/status", { signal: ctl.signal });
+    clearTimeout(timer);
+    state.aiAvailable = r.ok && (await r.json()).ai === true;
+  } catch (e) {
+    state.aiAvailable = false;
+  }
+  renderAi();
+}
+
+async function postJSON(path, payload, timeoutMs) {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), timeoutMs);
+  try {
+    const r = await fetch(path, {
+      method: "POST",
+      signal: ctl.signal,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    if (!r.ok) throw new Error(`backend-${r.status}`);
+    return await r.json();
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function validSections(sections) {
+  return Array.isArray(sections) && sections.length > 0 && sections.every((s) =>
+    s && typeof s.title === "string" && Array.isArray(s.items) && s.items.length > 0);
+}
+
+async function draftPlanEngine(requirement) {
+  const req = String(requirement || (elements.requirement && elements.requirement.value) || "").trim();
+  if (!req) throw new Error("Add a business requirement before drafting a plan.");
+  const spec = parseBrief(req);
+  if (state.ai && state.aiAvailable) {
+    try {
+      if (elements.requirement) elements.requirement.value = req;
+      const hint = document.querySelector("#brief-hint");
+      if (hint) hint.textContent = "Drafting plan with model…";
+      const out = await postJSON("/api/plan", {
+        requirement: req, guardrails: state.guardrails, targets: spec.targets
+      }, 25000);
+      if (!validSections(out.sections)) throw new Error("bad-shape");
+      state.requirement = req;
+      state.scenario = spec.scenario;
+      state.module = spec.module;
+      state.plan = out.sections;
+      state.approved = false;
+      state.generated = false;
+      state.validation = [];
+      state.files = {};
+      activeFile = null;
+      logActivity("agent", `Drafted plan with model for ${state.module}`);
+      render();
+      persist();
+      return snapshot();
+    } catch (e) {
+      logActivity("agent", "Model drafting failed — used local composer");
+    }
+  }
+  return draftPlan(req);
+}
+
+async function generateAddonEngine() {
+  if (!state.plan.length) throw new Error("Draft an architecture plan before generating an add-on.");
+  if (!state.approved) throw new Error("A human must explicitly approve the plan before generation.");
+  if (state.ai && state.aiAvailable) {
+    try {
+      const spec = parseBrief(state.requirement);
+      const isPos = spec.primary === "pos.order";
+      const allowedPaths = ["__manifest__.py", "__init__.py", "models/__init__.py",
+        isPos ? "models/pos_order.py" : "models/sale_order.py",
+        "views/sale_order_views.xml", "views/account_move_views.xml", "views/stock_picking_views.xml",
+        "security/ir.model.access.csv", "tests/__init__.py", `tests/test_${spec.moduleSuffix}.py`, "README.md"];
+      const out = await postJSON("/api/generate", {
+        module: spec.module, primary: spec.primary, brief: summarizeRequirement(state.requirement),
+        guardrails: state.guardrails, allowedPaths
+      }, 30000);
+      const files = {};
+      for (const p of allowedPaths) {
+        if (out.files && typeof out.files[p] === "string" && out.files[p].length) files[p] = out.files[p];
+      }
+      if (!files["__manifest__.py"] || Object.keys(files).length < allowedPaths.length) throw new Error("bad-shape");
+      state.files = files;
+      state.module = spec.module;
+      state.scenario = spec.scenario;
+      state.validation = runRealValidation();
+      state.generated = true;
+      activeFile = "__manifest__.py";
+      logActivity("agent", `Generated ${Object.keys(files).length} files with model for ${state.module}`);
+      render();
+      persist();
+      return { module: state.module, tree: generatedTree(), files: Object.keys(files), validation: state.validation };
+    } catch (e) {
+      logActivity("agent", "Model generation failed — used local composer");
+    }
+  }
+  return generateAddon();
+}
+
 function downloadBundle() {
   const bundle = [`# ${state.module}`, "", `## Brief\n${state.requirement}`, "", "## Files", ...Object.keys(state.files).flatMap((k) => [`\n### ${k}\n\`\`\`\n${state.files[k]}\n\`\`\``])].join("\n");
   const blob = new Blob([bundle], { type: "text/markdown" });
@@ -787,7 +910,7 @@ function registerWebMcpTools() {
         properties: { requirement: { type: "string", description: "The business change to design." } },
         required: ["requirement"]
       },
-      execute: async ({ requirement }) => toolResult(draftPlan(requirement))
+      execute: async ({ requirement }) => toolResult(await draftPlanEngine(requirement))
     }),
     register({
       name: "update_plan_guardrail",
@@ -827,7 +950,7 @@ function registerWebMcpTools() {
       execute: async ({ approved }) => {
         if (approved !== true) throw new Error("Generation requires approved: true.");
         approvePlan();
-        return toolResult(generateAddon());
+        return toolResult(await generateAddonEngine());
       }
     }),
     register({
@@ -882,14 +1005,14 @@ function registerWebMcpTools() {
   });
 }
 
-document.querySelector("#draft-button")?.addEventListener("click", () => {
-  try { draftPlan(); } catch (error) { alert(error.message); }
+document.querySelector("#draft-button")?.addEventListener("click", async () => {
+  try { await draftPlanEngine(); } catch (error) { alert(error.message); }
 });
 document.querySelector("#approve-button")?.addEventListener("click", () => {
   try { approvePlan(); } catch (error) { alert(error.message); }
 });
-document.querySelector("#generate-button")?.addEventListener("click", () => {
-  try { generateAddon(); } catch (error) { alert(error.message); }
+document.querySelector("#generate-button")?.addEventListener("click", async () => {
+  try { await generateAddonEngine(); } catch (error) { alert(error.message); }
 });
 document.querySelector("#add-rule-button")?.addEventListener("click", () => {
   const rule = window.prompt("Add a guardrail for this project:");
@@ -961,13 +1084,21 @@ document.querySelector("#download-button")?.addEventListener("click", () => {
     downloadBundle();
   } catch (e) { alert(e.message); }
 });
-document.querySelectorAll("[data-preset]")?.forEach((b) => b.addEventListener("click", () => {
+document.querySelectorAll("[data-preset]")?.forEach((b) => b.addEventListener("click", async () => {
   const key = b.dataset.preset;
   if (elements.requirement && PRESETS[key]) elements.requirement.value = PRESETS[key];
-  try { draftPlan(PRESETS[key]); } catch (e) { alert(e.message); }
+  try { await draftPlanEngine(PRESETS[key]); } catch (e) { alert(e.message); }
 }));
 
+document.querySelector("#ai-toggle")?.addEventListener("change", async (e) => {
+  state.ai = !!e.target.checked;
+  persist();
+  renderAi();
+  if (state.ai) await probeAI();
+});
+
 restore();
+if (typeof state.ai !== "boolean") state.ai = false;
 if (!state.requirement) {
   try {
     const h = window.location.hash;
@@ -976,3 +1107,4 @@ if (!state.requirement) {
 }
 render();
 registerWebMcpTools();
+probeAI();
