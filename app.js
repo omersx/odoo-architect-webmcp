@@ -614,15 +614,18 @@ function renderGuardrails() {
 }
 
 function renderPlan() {
+  const section = document.querySelector("#plan-section");
+  const review = document.querySelector("#review-strip");
   if (!elements.planGrid) return;
   if (!state.plan.length) {
-    elements.planGrid.innerHTML = `<div class="empty-plan">Your proposed architecture will appear here.<br />The user and agent can inspect the same plan.</div>`;
-    if (elements.planStatus) {
-      elements.planStatus.textContent = "Waiting for a brief";
-      elements.planStatus.classList.remove("ready");
-    }
+    if (section) section.hidden = true;
+    if (review) review.hidden = true;
+    setWorkflowStep("step-plan", false);
+    setWorkflowStep("step-approve", false);
     return;
   }
+  if (section) section.hidden = false;
+  if (review) review.hidden = false;
   elements.planGrid.innerHTML = state.plan.map((section, index) => `
     <article class="plan-card">
       <span class="card-number">0${index + 1}</span>
