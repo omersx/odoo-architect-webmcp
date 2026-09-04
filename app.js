@@ -572,9 +572,16 @@ function snapshot() {
 function explainTradeoffs() {
   if (!state.plan.length) throw new Error("Draft a plan first.");
   const meta = scenarioMeta(state.scenario);
+  let field = meta.field;
+  if (state.scenario === "generic") {
+    try {
+      const spec = parseBrief(state.requirement);
+      field = (`x_${spec.keywords.slice(0, 2).join("_") || "custom_flag"}`).slice(0, 30);
+    } catch (e) { field = meta.field; }
+  }
   return {
     scenario: state.scenario,
-    whySafe: ["Custom module only, no core edits", `ORM-first field ${meta.field}`, "XPath inheritance, read-only downstream"],
+    whySafe: ["Custom module only, no core edits", `ORM-first field ${field}`, "XPath inheritance, read-only downstream"],
     risks: state.scenario === "pharmacy" ? ["Expiry logic needs real product_expiry dates", "Override group must exist"] : state.scenario === "pos" ? ["Manager group must exist", "Receipt template override needs testing"] : ["Downstream readonly fields need access review"],
     alternatives: ["Larger suite module (rejected: upgrade risk)", "Studio UI only, no agent (rejected: guessing XML)"],
     guardrailsEnforced: state.guardrails.length
