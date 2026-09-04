@@ -992,14 +992,32 @@ function registerWebMcpTools() {
   });
 }
 
+function setBusy(btn, busy, label) {
+  if (!btn) return;
+  if (busy) {
+    btn.dataset.label = btn.innerHTML;
+    btn.disabled = true;
+    btn.classList.add("busy");
+    btn.innerHTML = `<span class="spinner" aria-hidden="true"></span> ${escapeHtml(label)}`;
+  } else {
+    if (btn.dataset.label) btn.innerHTML = btn.dataset.label;
+    btn.classList.remove("busy");
+    render();
+  }
+}
+
 document.querySelector("#draft-button")?.addEventListener("click", async () => {
-  try { await draftPlanEngine(); } catch (error) { alert(error.message); }
+  const btn = document.querySelector("#draft-button");
+  setBusy(btn, true, "Drafting…");
+  try { await draftPlanEngine(); } catch (error) { alert(error.message); } finally { setBusy(btn, false); }
 });
 document.querySelector("#approve-button")?.addEventListener("click", () => {
   try { approvePlan(); } catch (error) { alert(error.message); }
 });
 document.querySelector("#generate-button")?.addEventListener("click", async () => {
-  try { await generateAddonEngine(); } catch (error) { alert(error.message); }
+  const btn = document.querySelector("#generate-button");
+  setBusy(btn, true, "Generating…");
+  try { await generateAddonEngine(); } catch (error) { alert(error.message); } finally { setBusy(btn, false); }
 });
 document.querySelector("#add-rule-button")?.addEventListener("click", () => {
   const rule = window.prompt("Add a guardrail for this project:");
