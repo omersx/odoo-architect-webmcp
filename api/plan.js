@@ -10,7 +10,8 @@ const SYSTEM = [
   "Return JSON ONLY in this shape:",
   '{"sections":[{"title":"Scope & modules","description":"...","items":["..."]}]}',
   "Exactly 4 sections: Scope & modules, Domain model, Views & access, Quality gate.",
-  "Each section: 2-4 short concrete items. No markdown, no extra keys."
+  "Each section: 2-4 short concrete items. No markdown, no extra keys.",
+  "Be concise. Your final message must be ONLY the JSON object."
 ].join("\n");
 
 module.exports = async (req, res) => {
@@ -47,7 +48,7 @@ module.exports = async (req, res) => {
     `Guardrails: ${guardrails.join(" | ").slice(0, 1200)}`
   ].join("\n");
   try {
-    const out = await chatJson(prov.baseURL, prov.apiKey, prov.model, SYSTEM, user, 800, 15000);
+    const out = await chatJson(prov.baseURL, prov.apiKey, prov.model, SYSTEM, user, 1500, 25000);
     const sections = Array.isArray(out.sections) ? out.sections : null;
     if (!sections || sections.length < 1) throw new Error("bad-shape");
     const clean = sections.slice(0, 4).map((s) => ({

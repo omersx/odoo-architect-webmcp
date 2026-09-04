@@ -7,7 +7,8 @@ const SYSTEM = [
   "Write upgrade-safe Odoo 18 addon file contents. Never modify core.",
   "Use _inherit, ORM only (no SQL), stable XPath, ir.model.access.csv, TransactionCase tests.",
   "Return JSON ONLY: {\"files\":{\"__manifest__.py\":\"...\", ...}}.",
-  "Only the requested paths. No markdown, no extra keys, no explanations."
+  "Only the requested paths. No markdown, no extra keys, no explanations.",
+  "Be concise. Your final message must be ONLY the JSON object."
 ].join("\n");
 
 function cleanFiles(files, allowed) {

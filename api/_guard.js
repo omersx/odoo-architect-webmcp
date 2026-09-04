@@ -92,7 +92,9 @@ async function postChat(baseURL, apiKey, model, system, user, maxTokens, timeout
       throw err;
     }
     const data = await resp.json();
-    const text = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+    const msg = (data && data.choices && data.choices[0] && data.choices[0].message) || {};
+    // Reasoning-distilled models may put output in `reasoning` with empty `content`.
+    const text = msg.content || msg.reasoning;
     if (!text) throw new Error("upstream-empty");
     return text;
   } finally {
